@@ -1,0 +1,27 @@
+From 2c0a33537ce2271676a5da49d2297b5c9e9c8e1a Mon Sep 17 00:00:00 2001
+From: Garrett Brown <themagnificentmrb@gmail.com>
+Date: Mon, 15 Apr 2019 16:54:27 -0700
+Subject: [PATCH 1/2] [temp] Bump version.txt for testing
+
+---
+ version.txt | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/version.txt b/version.txt
+index 2d3f82045d..f37c3a41fc 100644
+--- a/version.txt
++++ b/version.txt
+@@ -4,8 +4,8 @@ COPYRIGHT_YEARS 2005-2018
+ WEBSITE http://kodi.tv
+ VERSION_MAJOR 18
+ VERSION_MINOR 2
+-VERSION_TAG RC1
+-VERSION_CODE 18.1.901
++VERSION_TAG RC2
++VERSION_CODE 18.1.902
+ ADDON_API 18.1.901
+ APP_PACKAGE org.xbmc.kodi
+ PACKAGE_IDENTITY XBMCFoundation.Kodi
+-- 
+2.20.1 (Apple Git-117)
+

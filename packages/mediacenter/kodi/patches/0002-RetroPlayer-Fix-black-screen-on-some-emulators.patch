@@ -1,0 +1,237 @@
+From 9d7d25cd8eee18a3a8e6bb656c2592f76538bd02 Mon Sep 17 00:00:00 2001
+From: Garrett Brown <themagnificentmrb@gmail.com>
+Date: Mon, 15 Apr 2019 16:45:19 -0700
+Subject: [PATCH 2/2] RetroPlayer: Fix black screen on some emulators
+
+---
+ .../RetroPlayer/rendering/RPRenderManager.cpp | 95 ++++++++++++-------
+ .../RetroPlayer/rendering/RPRenderManager.h   | 13 +++
+ 2 files changed, 74 insertions(+), 34 deletions(-)
+
+diff --git a/xbmc/cores/RetroPlayer/rendering/RPRenderManager.cpp b/xbmc/cores/RetroPlayer/rendering/RPRenderManager.cpp
+index 80e2b0cf1d..778a906d16 100644
+--- a/xbmc/cores/RetroPlayer/rendering/RPRenderManager.cpp
++++ b/xbmc/cores/RetroPlayer/rendering/RPRenderManager.cpp
+@@ -73,6 +73,7 @@ void CRPRenderManager::Deinitialize()
+   m_renderers.clear();
+ 
+   m_state = RENDER_STATE::UNCONFIGURED;
++  m_bConfigured = false;
+ }
+ 
+ bool CRPRenderManager::Configure(AVPixelFormat format, unsigned int nominalWidth, unsigned int nominalHeight, unsigned int maxWidth, unsigned int maxHeight)
+@@ -102,7 +103,10 @@ bool CRPRenderManager::GetVideoBuffer(unsigned int width, unsigned int height, A
+     buffer->Release();
+   m_pendingBuffers.clear();
+ 
+-  if (m_bFlush || m_state != RENDER_STATE::CONFIGURED)
++  if (!m_bConfigured)
++    return false;
++
++  if (m_bFlush)
+     return false;
+ 
+   // Get buffers from visible renderers
+@@ -133,7 +137,10 @@ bool CRPRenderManager::GetVideoBuffer(unsigned int width, unsigned int height, A
+ 
+ void CRPRenderManager::AddFrame(const uint8_t* data, size_t size, unsigned int width, unsigned int height, unsigned int orientationDegCCW)
+ {
+-  if (m_bFlush || m_state != RENDER_STATE::CONFIGURED)
++  if (!m_bConfigured)
++    return;
++
++  if (m_bFlush)
+     return;
+ 
+   // Validate parameters
+@@ -224,8 +231,6 @@ void CRPRenderManager::FrameMove()
+ {
+   CheckFlush();
+ 
+-  bool bIsConfigured = false;
+-
+   {
+     CSingleLock lock(m_stateMutex);
+ 
+@@ -234,15 +239,13 @@ void CRPRenderManager::FrameMove()
+       m_processInfo.ConfigureRenderSystem(m_format);
+ 
+       m_state = RENDER_STATE::CONFIGURED;
++      m_bConfigured = true;
+ 
+       CLog::Log(LOGINFO, "RetroPlayer[RENDER]: Renderer configured on first frame");
+     }
+-
+-    if (m_state == RENDER_STATE::CONFIGURED)
+-      bIsConfigured = true;
+   }
+ 
+-  if (bIsConfigured)
++  if (m_bConfigured)
+   {
+     for (auto &renderer : m_renderers)
+       renderer->FrameMove();
+@@ -283,23 +286,22 @@ void CRPRenderManager::Flush()
+ 
+ void CRPRenderManager::RenderWindow(bool bClear, const RESOLUTION_INFO &coordsRes)
+ {
+-  std::shared_ptr<CRPBaseRenderer> renderer = GetRenderer(nullptr);
+-  if (!renderer)
+-    return;
+-
+   m_renderContext.SetRenderingResolution(m_renderContext.GetVideoResolution(), false);
+ 
+-  RenderInternal(renderer, bClear, 255);
++  if (OnRender())
++  {
++    std::shared_ptr<CRPBaseRenderer> renderer = GetRenderer(nullptr);
++    if (!renderer)
++      return;
++
++    RenderInternal(renderer, bClear, 255);
++  }
+ 
+   m_renderContext.SetRenderingResolution(coordsRes, false);
+ }
+ 
+ void CRPRenderManager::RenderControl(bool bClear, bool bUseAlpha, const CRect &renderRegion, const IGUIRenderSettings *renderSettings)
+ {
+-  std::shared_ptr<CRPBaseRenderer> renderer = GetRenderer(renderSettings);
+-  if (!renderer)
+-    return;
+-
+   // Set fullscreen
+   const bool bWasFullscreen = m_renderContext.IsFullScreenVideo();
+   if (bWasFullscreen)
+@@ -311,23 +313,30 @@ void CRPRenderManager::RenderControl(bool bClear, bool bUseAlpha, const CRect &r
+   TransformMatrix mat;
+   m_renderContext.SetTransform(mat, 1.0, 1.0);
+ 
+-  // Clear render area
+-  if (bClear)
++  if (OnRender())
+   {
+-    CRect old = m_renderContext.GetScissors();
+-    CRect region = renderRegion;
+-    region.Intersect(old);
+-    m_renderContext.SetScissors(region);
+-    m_renderContext.Clear(0);
+-    m_renderContext.SetScissors(old);
+-  }
++    std::shared_ptr<CRPBaseRenderer> renderer = GetRenderer(renderSettings);
++    if (!renderer)
++      return;
+ 
+-  // Calculate alpha
+-  UTILS::Color alpha = 255;
+-  if (bUseAlpha)
+-    alpha = m_renderContext.MergeAlpha(0xFF000000) >> 24;
++    // Clear render area
++    if (bClear)
++    {
++      CRect old = m_renderContext.GetScissors();
++      CRect region = renderRegion;
++      region.Intersect(old);
++      m_renderContext.SetScissors(region);
++      m_renderContext.Clear(0);
++      m_renderContext.SetScissors(old);
++    }
+ 
+-  RenderInternal(renderer, false, alpha);
++    // Calculate alpha
++    UTILS::Color alpha = 255;
++    if (bUseAlpha)
++      alpha = m_renderContext.MergeAlpha(0xFF000000) >> 24;
++
++    RenderInternal(renderer, false, alpha);
++  }
+ 
+   // Restore coordinates
+   m_renderContext.RemoveTransform();
+@@ -402,13 +411,25 @@ void CRPRenderManager::RenderInternal(const std::shared_ptr<CRPBaseRenderer> &re
+   renderer->RenderFrame(bClear, alpha);
+ }
+ 
++bool CRPRenderManager::OnRender()
++{
++  CSingleLock lock(m_stateMutex);
++
++  // If the render manager is in the configured state, promote it to the
++  // rendering state
++  if (m_state == RENDER_STATE::CONFIGURED)
++    m_state = RENDER_STATE::RENDERING;
++
++  return m_state == RENDER_STATE::RENDERING;
++}
++
+ std::shared_ptr<CRPBaseRenderer> CRPRenderManager::GetRenderer(const IGUIRenderSettings *renderSettings)
+ {
+   std::shared_ptr<CRPBaseRenderer> renderer;
+ 
+   {
+     CSingleLock lock(m_stateMutex);
+-    if (m_state == RENDER_STATE::UNCONFIGURED)
++    if (!m_bConfigured)
+       return renderer;
+   }
+ 
+@@ -497,7 +518,10 @@ bool CRPRenderManager::HasRenderBuffer(IRenderBufferPool *bufferPool)
+ 
+ IRenderBuffer *CRPRenderManager::GetRenderBuffer(IRenderBufferPool *bufferPool)
+ {
+-  if (m_bFlush || m_state != RENDER_STATE::CONFIGURED)
++  if (!m_bConfigured)
++    return nullptr;
++
++  if (m_bFlush)
+     return nullptr;
+ 
+   IRenderBuffer *renderBuffer = nullptr;
+@@ -521,7 +545,10 @@ IRenderBuffer *CRPRenderManager::GetRenderBuffer(IRenderBufferPool *bufferPool)
+ 
+ void CRPRenderManager::CreateRenderBuffer(IRenderBufferPool *bufferPool)
+ {
+-  if (m_bFlush || m_state != RENDER_STATE::CONFIGURED)
++  if (!m_bConfigured)
++    return;
++
++  if (m_bFlush)
+     return;
+ 
+   CSingleLock lock(m_bufferMutex);
+diff --git a/xbmc/cores/RetroPlayer/rendering/RPRenderManager.h b/xbmc/cores/RetroPlayer/rendering/RPRenderManager.h
+index c20beb3eac..69abaa203b 100644
+--- a/xbmc/cores/RetroPlayer/rendering/RPRenderManager.h
++++ b/xbmc/cores/RetroPlayer/rendering/RPRenderManager.h
+@@ -111,6 +111,17 @@ namespace RETRO
+      */
+     void RenderInternal(const std::shared_ptr<CRPBaseRenderer> &renderer, bool bClear, uint32_t alpha);
+ 
++    /*!
++     * \brief Callback when a GUI component is rendering
++     *
++     * This function is called before a GUI component is rendered. It is
++     * responsible for handling state updates.
++     *
++     * \return True to allow rendering, false to suppress rendering of the
++     *         GUI component
++     */
++    bool OnRender();
++
+     /*!
+      * \brief Return true if we have a render buffer belonging to the specified pool
+      */
+@@ -188,8 +199,10 @@ namespace RETRO
+       UNCONFIGURED,
+       CONFIGURING,
+       CONFIGURED,
++      RENDERING,
+     };
+     RENDER_STATE m_state = RENDER_STATE::UNCONFIGURED;
++    bool m_bConfigured = false;
+     bool m_bHasCachedFrame = false; // Invariant: m_cachedFrame is empty if false
+     std::set<std::string> m_failedShaderPresets;
+     std::atomic<bool> m_bFlush = {false};
+-- 
+2.20.1 (Apple Git-117)
+
