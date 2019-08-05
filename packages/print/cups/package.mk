@@ -25,5 +25,5 @@ pre_configure_target() {
 }
 
 makeinstall_target() {
-  make BUILDROOT="$INSTALL/../.INSTALL_PKG"
+  make BUILDROOT="$SYSROOT_PREFIX" install
 }
