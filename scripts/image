@@ -135,7 +135,7 @@ ln -sfn /usr/lib ${INSTALL}/lib
 ln -sfn /usr/bin ${INSTALL}/bin
 ln -sfn /usr/sbin ${INSTALL}/sbin
 
-if [ "${TARGET_ARCH}" = "x86_64" ]; then
+if [ "${TARGET_ARCH}" = "i386" -o "${TARGET_ARCH}" = "x86_64"]; then
   ln -sfn /usr/lib ${INSTALL}/lib64
   ln -sfn /usr/lib ${INSTALL}/usr/lib64
 fi
