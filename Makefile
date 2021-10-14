@@ -11,6 +11,10 @@ release:
 image:
 	./scripts/image mkimage
 
+	rsync -aP --update --protect-args --delete \
+	  "/home/${USER}/Documents/LibreELEC.tv/target/" \
+	  "/home/${USER}/Shared/libreelec/" \
+
 noobs:
 	./scripts/image noobs
 
