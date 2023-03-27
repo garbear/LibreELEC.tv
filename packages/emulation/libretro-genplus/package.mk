@@ -2,25 +2,29 @@
 # Copyright (C) 2016-present Team LibreELEC (https://libreelec.tv)
 
 PKG_NAME="libretro-genplus"
-PKG_VERSION="118e2b83873beba1a2f154a8bad8a02bdd8ea98d"
-PKG_SHA256="b6599120b736b2579cf56725b7eff8454f469c42d5039eaf6524dbb6d138eff0"
-PKG_LICENSE="Modified BSD / LGPLv2.1"
-PKG_SITE="https://github.com/libretro/Genesis-Plus-GX"
+PKG_VERSION="f79bb4456fcd358e0943ab20cfbbafbbd764fec9"
+PKG_SHA256="14bcb167dfcc6012c0a3bb201802fd5c6c4acef2d1f8ed8a0e8ad58d3d3eab4c"
+PKG_LICENSE="Non-commercial"
+PKG_SITE="https://github.com/ekeeke/Genesis-Plus-GX"
 PKG_URL="https://github.com/libretro/Genesis-Plus-GX/archive/${PKG_VERSION}.tar.gz"
-PKG_DEPENDS_TARGET="toolchain kodi-platform"
-PKG_LONGDESC="game.libretro.genplus: Genesis Plus GX for Kodi"
-PKG_TOOLCHAIN="manual"
+PKG_DEPENDS_TARGET="toolchain"
+PKG_LONGDESC="Genesis Plus GX is an open-source & portable Sega Mega Drive / Genesis emulator, now also emulating SG-1000, Master System, Game Gear and Sega/Mega CD hardware."
+PKG_TOOLCHAIN="make"
 
 PKG_LIBNAME="genesis_plus_gx_libretro.so"
 PKG_LIBPATH="${PKG_LIBNAME}"
 PKG_LIBVAR="GENPLUS_LIB"
 
-make_target() {
-  if [ "${ARCH}" = "arm" ]; then
+PKG_MAKE_OPTS_TARGET="-f Makefile.libretro"
+
+if [ "${ARCH}" = "aarch64" ]; then
+  PKG_MAKE_OPTS_TARGET+=" NO_OPTIMIZE=1"
+fi
+
+pre_make_target() {
+  if [ "${ARCH}" = "arm" -o "${ARCH}" = "aarch64" ]; then
     CFLAGS+=" -DALIGN_LONG"
   fi
-
-  make -f Makefile.libretro GIT_VERSION=${PKG_VERSION}
 }
 
 makeinstall_target() {

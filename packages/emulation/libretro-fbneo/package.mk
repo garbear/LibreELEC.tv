@@ -2,35 +2,44 @@
 # Copyright (C) 2021-present Team LibreELEC (https://libreelec.tv)
 
 PKG_NAME="libretro-fbneo"
-PKG_VERSION="afcd7234fc93b2824f6b8fe1aa80c142a61ad528"
-PKG_SHA256="94d5f9215a3231ee040a2841e3512e32cc21416e7eec5f6c3b42f1d6eca2a4ea"
-PKG_LICENSE="OSS"
-PKG_SITE="https://github.com/libretro/FBNeo"
+PKG_VERSION="1cbfe44a684bb5ad7925e637eee9381d655fca8f"
+PKG_SHA256="eba6df1e17bd230c8d0fa9ab936c377fdf3cd1f7a613292585fdd94b4a6afd56"
+PKG_LICENSE="Non-commercial"
+PKG_SITE="https://github.com/libretro/fbneo"
 PKG_URL="https://github.com/libretro/FBNeo/archive/${PKG_VERSION}.tar.gz"
-PKG_DEPENDS_TARGET="toolchain kodi-platform"
-PKG_LONGDESC="game.libretro.fbneo: FinalBurn Neo GameClient for Kodi"
+PKG_DEPENDS_TARGET="toolchain"
+PKG_LONGDESC="Port of Final Burn Neo to Libretro"
 PKG_TOOLCHAIN="make"
-PKG_BUILD_FLAGS="-gold +lto"
 
 PKG_LIBNAME="fbneo_libretro.so"
 PKG_LIBPATH="src/burner/libretro/${PKG_LIBNAME}"
 PKG_LIBVAR="FBNEO_LIB"
 
-PKG_MAKE_OPTS_TARGET="-C src/burner/libretro/ GIT_VERSION=${PKG_VERSION:0:7}"
+PKG_MAKE_OPTS_TARGET="-C src/burner/libretro"
 
-pre_configure_target() {
-  if [ "${ARCH}" = "arm" ]; then
-    PKG_MAKE_OPTS_TARGET+=" platform=armv"
+if [ "${ARCH}" = "arm" ]; then
+  PKG_MAKE_OPTS_TARGET+=" profile=performance"
 
-    # NEON Support
-    if target_has_feature neon; then
-      PKG_MAKE_OPTS_TARGET+="-neon"
-    fi
+  if target_has_feature neon ; then
+    PKG_MAKE_OPTS_TARGET+=" HAVE_NEON=1"
   fi
-}
+
+  if [ "${PROJECT}" = "Rockchip" -a "${DEVICE}" = "OdroidGoAdvance" ]; then
+    PKG_MAKE_OPTS_TARGET+=" USE_CYCLONE=1"
+  fi
+
+else
+  PKG_MAKE_OPTS_TARGET+=" profile=accuracy"
+fi
 
 makeinstall_target() {
   mkdir -p ${SYSROOT_PREFIX}/usr/lib/cmake/${PKG_NAME}
   cp ${PKG_LIBPATH} ${SYSROOT_PREFIX}/usr/lib/${PKG_LIBNAME}
   echo "set(${PKG_LIBVAR} ${SYSROOT_PREFIX}/usr/lib/${PKG_LIBNAME})" > ${SYSROOT_PREFIX}/usr/lib/cmake/${PKG_NAME}/${PKG_NAME}-config.cmake
+
+  mkdir -p ${SYSROOT_PREFIX}/usr/share/libretro-database/fbneo
+  cp -vr dats/* ${SYSROOT_PREFIX}/usr/share/libretro-database/fbneo
+
+  mkdir -p ${SYSROOT_PREFIX}/usr/share/retroarch/system/fbneo
+  cp metadata/hiscore.dat ${SYSROOT_PREFIX}/usr/share/retroarch/system/fbneo
 }
