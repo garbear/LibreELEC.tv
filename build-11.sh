@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Enable strict mode
+set -o errexit
+set -o pipefail
+set -o nounset
+
+CUSTOM_VERSION=retroplayer-20240309-313e83b8
+
+#PROJECT=Generic DEVICE=Generic ARCH=x86_64 CUSTOM_VERSION=${CUSTOM_VERSION} make image
+#PROJECT=RPi ARCH=arm DEVICE=RPi2 CUSTOM_VERSION=${CUSTOM_VERSION} make image
+#PROJECT=RPi ARCH=arm DEVICE=RPi4 CUSTOM_VERSION=${CUSTOM_VERSION} make image
+#PROJECT=RPi ARCH=arm DEVICE=RPi5 CUSTOM_VERSION=${CUSTOM_VERSION} make image
+PROJECT=Rockchip ARCH=arm DEVICE=RK3399 CUSTOM_VERSION=${CUSTOM_VERSION} make image
