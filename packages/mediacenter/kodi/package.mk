@@ -3,8 +3,7 @@
 # Copyright (C) 2017-present Team LibreELEC (https://libreelec.tv)
 
 PKG_NAME="kodi"
-PKG_VERSION="21.1-Omega"
-PKG_SHA256="ad6e40b0912c8318635f0501dc1f7f27ce3a29e671f2ddb608cad34babae80ef"
+PKG_VERSION="c6832351a021c308adc6df4f77db433dd0ceb228"
 PKG_LICENSE="GPL"
 PKG_SITE="http://www.kodi.tv"
 PKG_URL="https://github.com/xbmc/xbmc/archive/${PKG_VERSION}.tar.gz"
@@ -318,7 +317,6 @@ pre_configure_target() {
 post_makeinstall_target() {
   mkdir -p ${INSTALL}/.noinstall
     mv ${INSTALL}/usr/share/kodi/addons/skin.estuary \
-       ${INSTALL}/usr/share/kodi/addons/service.xbmc.versioncheck \
        ${INSTALL}/.noinstall
 
   rm -rf ${INSTALL}/usr/bin/kodi
